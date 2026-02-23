@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>TaskPilot</title>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="TaskPilot"/>
+  <meta name="theme-color" content="#0a0e1a"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icon-192.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--bg:#080c18;--bg2:#0e1428;--bg3:#141c36;--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.12);--text:#e8ecf5;--muted:#5a6480;--accent:#f0a500;--accent2:#ff6b35;--blue:#3b7fff;--green:#2ecf7a;--red:#ff4d6d;--purple:#a855f7;--teal:#14b8a6;--radius:14px;--radius-sm:8px;--font-head:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;--safe-top:env(safe-area-inset-top);--safe-bot:env(safe-area-inset-bottom);}
+    [data-theme="warm"]{--bg:#100e0a;--bg2:#1a1612;--bg3:#231e18;--accent:#f5c842;--accent2:#e87040;--blue:#5b9af5;}
+    [data-theme="cool"]{--bg:#080f1a;--bg2:#0d1625;--bg3:#111e30;--accent:#38bdf8;--accent2:#818cf8;--blue:#38bdf8;}
+    [data-theme="forest"]{--bg:#060f0a;--bg2:#0c1a10;--bg3:#112118;--accent:#4ade80;--accent2:#facc15;--blue:#34d399;}
+    [data-theme="light"]{--bg:#f4f6fb;--bg2:#fff;--bg3:#eaeef7;--border:rgba(0,0,0,.07);--border2:rgba(0,0,0,.13);--text:#151c2e;--muted:#8898bb;--accent:#f0a500;--blue:#2563eb;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:var(--font-body);-webkit-font-smoothing:antialiased;overscroll-behavior:none;overflow:hidden;}
+    #app{display:flex;flex-direction:column;height:100vh;height:-webkit-fill-available;padding-top:var(--safe-top);padding-bottom:var(--safe-bot);overflow:hidden;}
+
+    /* HEADER */
+    header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+    .logo{font-family:var(--font-head);font-size:21px;font-weight:800;letter-spacing:-.5px;}.logo span{color:var(--accent);}
+    .header-r{display:flex;gap:8px;align-items:center;}
+    .ibtn{width:36px;height:36px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg2);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s;}
+    .ibtn:active{background:var(--bg3);}
+    .sdot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;}
+    .sdot.syncing{animation:blink .8s linear infinite;}
+    .sdot.error{background:var(--red);box-shadow:0 0 6px var(--red);}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+    @keyframes blink{0%,100%{transform:scale(1)}50%{transform:scale(1.6)}}
+
+    /* VIEW SWITCHER */
+    .vsw{display:flex;padding:10px 20px 0;flex-shrink:0;}
+    .vbtn{flex:1;padding:8px 2px;font-size:11px;font-weight:700;font-family:var(--font-head);color:var(--muted);background:var(--bg2);border:1px solid var(--border);cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;letter-spacing:.4px;}
+    .vbtn:first-child{border-radius:8px 0 0 8px;}
+    .vbtn:last-child{border-radius:0 8px 8px 0;}
+    .vbtn:not(:first-child){border-left:none;}
+    .vbtn.active{background:var(--accent);border-color:var(--accent);color:#000;}
+
+    /* STATS */
+    .sbar{display:flex;gap:8px;padding:10px 20px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;scrollbar-width:none;}
+    .sbar::-webkit-scrollbar{display:none;}
+    .spill{display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:9px 13px;min-width:76px;flex-shrink:0;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+    .spill:active{opacity:.75;}
+    .snum{font-family:var(--font-head);font-size:22px;font-weight:800;line-height:1;}
+    .slbl{font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;}
+    .spill.p-ov .snum{color:var(--red);}
+    .spill.p-td .snum{color:var(--accent);}
+    .spill.p-up .snum{color:var(--blue);}
+    .spill.p-tm .snum{color:var(--teal);}
+    .spill.p-dp .snum{color:var(--purple);}
+
+    /* FILTERS */
+    .fbar{display:flex;gap:6px;padding:6px 20px 8px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;scrollbar-width:none;}
+    .fbar::-webkit-scrollbar{display:none;}
+    .chip{display:flex;align-items:center;gap:4px;padding:5px 11px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+    .chip.active{background:var(--accent);border-color:var(--accent);color:#000;}
+    .cdot{width:5px;height:5px;border-radius:50%;}
+
+    /* SCAN BAR */
+    .scanbar{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;margin:0 20px 8px;display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted);flex-shrink:0;}
+    .spin{width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--purple);border-radius:50%;animation:rot .8s linear infinite;flex-shrink:0;}
+    @keyframes rot{to{transform:rotate(360deg)}}
+
+    /* TASK LIST */
+    .tscroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 20px 20px;}
+    .tscroll::-webkit-scrollbar{display:none;}
+    .slabel{font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:14px 0 7px;display:flex;align-items:center;gap:6px;}
+
+    /* TASK CARD */
+    .tcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:7px;cursor:pointer;position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent;transition:border-color .2s,opacity .15s;}
+    .tcard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;}
+    .tcard.s-ov::before{background:var(--red);}
+    .tcard.s-td::before{background:var(--accent);}
+    .tcard.s-up::before{background:var(--blue);}
+    .tcard.s-dn::before{background:var(--green);}
+    .tcard.s-tm::before{background:var(--teal);}
+    .tcard:active{opacity:.8;}
+    .tcard.s-dn{opacity:.5;}
+    .th{display:flex;align-items:flex-start;gap:10px;}
+    .tck{width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:1px;transition:all .2s;}
+    .tcard.s-dn .tck{background:var(--green);border-color:var(--green);}
+    .ttl{font-size:14px;font-weight:500;line-height:1.35;flex:1;}
+    .tcard.s-dn .ttl{text-decoration:line-through;color:var(--muted);}
+    .tbadges{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px;}
+    .badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;letter-spacing:.2px;white-space:nowrap;}
+    .b-ou{background:rgba(0,120,212,.15);color:#4da6ff;}
+    .b-as{background:rgba(248,86,68,.15);color:#ff8a7a;}
+    .b-te{background:rgba(100,100,255,.15);color:#9da8ff;}
+    .b-wa{background:rgba(37,211,102,.15);color:#4cde8a;}
+    .b-ai{background:rgba(168,85,247,.15);color:#c084fc;}
+    .b-dp{background:rgba(168,85,247,.08);color:#a855f7;border:1px solid rgba(168,85,247,.22);}
+    .b-ov{background:rgba(255,77,109,.1);color:var(--red);}
+    .b-td{background:rgba(240,165,0,.1);color:var(--accent);}
+    .b-hi{background:rgba(255,107,53,.1);color:var(--accent2);}
+    .b-tm{background:rgba(20,184,166,.1);color:var(--teal);}
+    .tmeta{display:flex;gap:9px;align-items:center;margin-top:7px;flex-wrap:wrap;}
+    .tdate{font-family:var(--font-mono);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px;}
+    .tdate.red{color:var(--red);}.tdate.amber{color:var(--accent);}
+    .tproj{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px;cursor:pointer;}
+    .tassign{font-size:11px;color:var(--teal);font-weight:500;}
+
+    /* PROJECT CARDS */
+    .pcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:border-color .2s;}
+    .pcard:active{opacity:.8;}
+    .pch{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+    .pname{font-family:var(--font-head);font-size:15px;font-weight:700;}
+    .psrc{font-size:10px;color:var(--muted);margin-top:1px;}
+    .pbar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:8px;}
+    .pfill{height:100%;border-radius:2px;background:var(--green);}
+    .plabels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:3px;}
+    .pmeta{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;}
+    .pmi{font-size:11px;color:var(--muted);}
+
+    /* EMPTY */
+    .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 30px;text-align:center;}
+    .ei{font-size:44px;margin-bottom:14px;}
+    .et{font-family:var(--font-head);font-size:18px;font-weight:700;margin-bottom:6px;}
+    .es{color:var(--muted);font-size:13px;line-height:1.6;}
+
+    /* NAV */
+    nav{display:flex;border-top:1px solid var(--border);background:var(--bg);flex-shrink:0;padding-bottom:var(--safe-bot);}
+    .ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px 3px;cursor:pointer;gap:3px;-webkit-tap-highlight-color:transparent;color:var(--muted);transition:color .15s;}
+    .ni.active{color:var(--accent);}
+    .ni svg{width:20px;height:20px;}
+    .nlbl{font-size:9px;font-weight:700;letter-spacing:.3px;}
+
+    /* PANELS */
+    .ov{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:100;opacity:0;pointer-events:none;transition:opacity .25s;}
+    .ov.vis{opacity:1;pointer-events:all;}
+    .panel{position:fixed;left:0;right:0;bottom:0;background:var(--bg2);border-radius:20px 20px 0 0;border:1px solid var(--border2);z-index:101;transform:translateY(100%);transition:transform .3s cubic-bezier(.25,.8,.25,1);max-height:92vh;overflow-y:auto;padding-bottom:calc(16px + var(--safe-bot));}
+    .panel.vis{transform:translateY(0);}
+    .ph{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:12px auto 0;}
+    .ptitle{font-family:var(--font-head);font-size:18px;font-weight:700;padding:14px 20px 0;}
+    .psub{font-size:13px;color:var(--muted);padding:4px 20px 0;line-height:1.5;}
+
+    /* SETTINGS */
+    .ss{padding:14px 20px 0;}
+    .st{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+    .sr{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);}
+    .sr:last-child{border-bottom:none;}
+    .sl{font-size:14px;}.ssb{font-size:12px;color:var(--muted);margin-top:2px;}
+    .sinput{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:var(--font-mono);font-size:12px;padding:8px 10px;width:100%;outline:none;margin-top:5px;}
+    .sinput:focus{border-color:var(--accent);}.sinput::placeholder{color:var(--muted);}
+    .tog{width:44px;height:26px;background:var(--bg3);border-radius:13px;border:1px solid var(--border2);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
+    .tog.on{background:var(--accent);border-color:var(--accent);}
+    .tog::after{content:'';position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+    .tog.on::after{left:20px;}
+    .atag{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;font-size:12px;margin-top:6px;}
+    .atag.ok{background:rgba(46,207,122,.1);color:var(--green);}
+    .atag.no{background:rgba(255,77,109,.1);color:var(--red);}
+
+    /* BUTTONS */
+    .btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 18px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;border:none;transition:opacity .15s;-webkit-tap-highlight-color:transparent;font-family:var(--font-body);}
+    .btn:active{opacity:.8;}
+    .bpri{background:var(--accent);color:#000;}
+    .bsec{background:transparent;border:1px solid var(--border2);color:var(--text);}
+    .bdng{background:rgba(255,77,109,.1);color:var(--red);border:1px solid rgba(255,77,109,.22);}
+    .bteal{background:rgba(20,184,166,.1);color:var(--teal);border:1px solid rgba(20,184,166,.22);}
+    .bfull{width:100%;}
+
+    /* SWATCHES */
+    .swatches{display:flex;gap:10px;flex-wrap:wrap;}
+    .sw{width:38px;height:38px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:all .15s;}
+    .sw.active{border-color:var(--accent);transform:scale(1.12);}
+
+    /* CHANNEL LIST */
+    .chlist{max-height:240px;overflow-y:auto;}
+    .chitem{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;}
+    .chitem:last-child{border-bottom:none;}
+    .chk{width:20px;height:20px;border-radius:5px;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;}
+    .chk.on{background:var(--accent);border-color:var(--accent);}
+    .chn{font-size:13px;}.cht{font-size:11px;color:var(--muted);}
+
+    /* ASSIGNEE CHIP */
+    .achip{display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:12px;margin:3px;}
+    .aav{width:20px;height:20px;border-radius:50%;background:var(--accent);color:#000;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+
+    /* INFO BOX */
+    .ibox{border-radius:var(--radius-sm);padding:9px 12px;font-size:12px;line-height:1.6;margin-top:8px;}
+    .ibox.blue{background:rgba(59,127,255,.07);border:1px solid rgba(59,127,255,.18);color:#7ba8ff;}
+    .ibox.green{background:rgba(46,207,122,.07);border:1px solid rgba(46,207,122,.18);color:var(--green);}
+    .ibox.amber{background:rgba(240,165,0,.07);border:1px solid rgba(240,165,0,.18);color:var(--accent);}
+
+    /* TOAST */
+    #toast{position:fixed;bottom:calc(74px + var(--safe-bot));left:50%;transform:translateX(-50%) translateY(14px);background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:9px 18px;border-radius:20px;font-size:13px;z-index:300;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none;}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    /* ONBOARDING */
+    .ob{position:fixed;inset:0;background:var(--bg);z-index:400;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px;text-align:center;}
+    .ob.hidden{display:none;}
+    .obl{font-family:var(--font-head);font-size:40px;font-weight:800;margin-bottom:6px;}
+    .obs{color:var(--muted);font-size:14px;margin-bottom:38px;line-height:1.6;max-width:300px;}
+    .obsteps{width:100%;max-width:340px;text-align:left;}
+    .obstep{display:flex;gap:14px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border);}
+    .obnum{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#000;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .obtt{font-weight:600;font-size:14px;margin-bottom:2px;}
+    .obds{font-size:12px;color:var(--muted);line-height:1.5;}
+  </style>
+</head>
+<body>
+
+<!-- ONBOARDING -->
+<div class="ob" id="ob">
+  <div class="obl">Task<span style="color:var(--accent)">Pilot</span></div>
+  <p class="obs">AI-powered task dashboard — Outlook, Asana, Teams &amp; WhatsApp in one place.</p>
+  <div class="obsteps">
+    <div class="obstep"><div class="obnum">1</div><div><div class="obtt">Asana Token</div><div class="obds">app.asana.com → Profile → Apps → Personal Access Tokens</div><input class="sinput" id="ob1" type="password" placeholder="Paste Asana PAT…" style="margin-top:8px"/></div></div>
+    <div class="obstep"><div class="obnum">2</div><div><div class="obtt">Microsoft Token (Outlook + Teams)</div><div class="obds">developer.microsoft.com/graph/graph-explorer → sign in → copy token</div><input class="sinput" id="ob2" type="password" placeholder="Paste MS Graph token…" style="margin-top:8px"/></div></div>
+    <div class="obstep"><div class="obnum">3</div><div><div class="obtt">Anthropic API Key</div><div class="obds">console.anthropic.com → API Keys → Create key — powers AI task extraction</div><input class="sinput" id="ob3" type="password" placeholder="sk-ant-…" style="margin-top:8px"/></div></div>
+  </div>
+  <div style="width:100%;max-width:340px;margin-top:22px">
+    <button class="btn bpri bfull" onclick="completeOB()" style="font-size:15px;padding:14px">Launch TaskPilot →</button>
+    <button class="btn bsec bfull" onclick="skipOB()" style="margin-top:10px;color:var(--muted);font-size:13px">Skip — use demo mode</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none">
+  <header>
+    <div class="logo">Task<span>Pilot</span></div>
+    <div class="header-r">
+      <div class="sdot" id="sdot"></div>
+      <div class="ibtn" onclick="syncAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg></div>
+      <div class="ibtn" onclick="showP('settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+    </div>
+  </header>
+
+  <!-- View Switcher -->
+  <div class="vsw" id="vsw">
+    <div class="vbtn active" data-v="today" onclick="setView('today')">TODAY</div>
+    <div class="vbtn" data-v="week" onclick="setView('week')">THIS WEEK</div>
+    <div class="vbtn" data-v="month" onclick="setView('month')">THIS MONTH</div>
+    <div class="vbtn" data-v="all" onclick="setView('all')">ALL</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="sbar">
+    <div class="spill p-ov" onclick="setFilter('overdue')"><div class="snum" id="stOv">0</div><div class="slbl">Overdue</div></div>
+    <div class="spill p-td" onclick="setFilter('today-due')"><div class="snum" id="stTd">0</div><div class="slbl">Today</div></div>
+    <div class="spill p-up" onclick="setFilter('upcoming')"><div class="snum" id="stUp">0</div><div class="slbl">Upcoming</div></div>
+    <div class="spill p-tm" onclick="setFilter('team')"><div class="snum" id="stTm">0</div><div class="slbl">My Team</div></div>
+    <div class="spill p-dp" onclick="setFilter('duplicate')"><div class="snum" id="stDp">0</div><div class="slbl">Dupes</div></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="fbar" id="fbar">
+    <div class="chip active" data-f="all" onclick="setFilter('all')">All</div>
+    <div class="chip" data-f="mine" onclick="setFilter('mine')"><span class="cdot" style="background:var(--accent)"></span>Mine</div>
+    <div class="chip" data-f="team" onclick="setFilter('team')"><span class="cdot" style="background:var(--teal)"></span>My Team</div>
+    <div class="chip" data-f="overdue" onclick="setFilter('overdue')"><span class="cdot" style="background:var(--red)"></span>Overdue</div>
+    <div class="chip" data-f="asana" onclick="setFilter('asana')"><span class="cdot" style="background:#ff8a7a"></span>Asana</div>
+    <div class="chip" data-f="outlook" onclick="setFilter('outlook')"><span class="cdot" style="background:#4da6ff"></span>Outlook</div>
+    <div class="chip" data-f="teams" onclick="setFilter('teams')"><span class="cdot" style="background:#9da8ff"></span>Teams</div>
+    <div class="chip" data-f="whatsapp" onclick="setFilter('whatsapp')"><span class="cdot" style="background:#4cde8a"></span>WhatsApp</div>
+    <div class="chip" data-f="duplicate" onclick="setFilter('duplicate')"><span class="cdot" style="background:var(--purple)"></span>Dupes</div>
+  </div>
+
+  <!-- Scan bar -->
+  <div class="scanbar" id="scanbar" style="display:none"><div class="spin"></div><span id="scanmsg">Scanning…</span></div>
+
+  <!-- Task list -->
+  <div class="tscroll" id="tlist"></div>
+
+  <!-- Nav -->
+  <nav>
+    <div class="ni active" data-tab="dashboard" onclick="switchTab('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="nlbl">Dashboard</span></div>
+    <div class="ni" data-tab="projects" onclick="switchTab('projects')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg><span class="nlbl">Projects</span></div>
+    <div class="ni" data-tab="team" onclick="switchTab('team')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg><span class="nlbl">My Team</span></div>
+    <div class="ni" data-tab="whatsapp" onclick="switchTab('whatsapp')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg><span class="nlbl">WhatsApp</span></div>
+    <div class="ni" data-tab="add" onclick="showP('addtask')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span class="nlbl">Add</span></div>
+  </nav>
+</div>
+
+<!-- SETTINGS -->
+<div class="ov" id="settingsOv" onclick="hideP('settings')"></div>
+<div class="panel" id="settingsPanel">
+  <div class="ph"></div><div class="ptitle">Settings</div>
+  <div class="ss"><div class="st">🔗 Asana</div><div id="asAuth"></div><input class="sinput" id="asTok" type="password" placeholder="Personal Access Token…"/><button class="btn bsec bfull" style="margin-top:8px" onclick="saveAsTok()">Save &amp; Connect</button></div>
+  <div class="ss"><div class="st">📧 Outlook + 💬 Teams</div><div id="msAuth"></div><div class="ibox blue" style="margin-top:6px">One Microsoft token covers both Outlook and Teams.</div><input class="sinput" id="msTok" type="password" placeholder="MS Graph token…" style="margin-top:8px"/><button class="btn bsec bfull" style="margin-top:8px" onclick="saveMsTok()">Save &amp; Connect</button>
+    <div class="sr" style="margin-top:4px"><div><div class="sl">AI email + Teams scanning</div><div class="ssb">Claude extracts tasks automatically</div></div><div class="tog" id="aiTog" onclick="this.classList.toggle('on');cfg.aiEnabled=this.classList.contains('on');saveCfg()"></div></div>
+    <input class="sinput" id="clKey" type="password" placeholder="Anthropic API key (sk-ant-…)"/><button class="btn bsec bfull" style="margin-top:8px" onclick="saveClKey()">Save Key</button>
+  </div>
+  <div class="ss"><div class="st">💬 Teams Channels</div><p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">Select which channels to monitor for tasks.</p><button class="btn bsec bfull" id="loadChBtn" onclick="loadChannels()">Load My Channels</button><div id="chlist" class="chlist" style="margin-top:10px"></div></div>
+  <div class="ss"><div class="st">👥 Direct Reports</div><p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">Their Asana tasks will appear with a team badge so you can track both your work and theirs.</p><div id="repsList"></div><div style="display:flex;gap:8px;margin-top:8px"><input class="sinput" id="newRep" placeholder="Name as in Asana…" style="flex:1;margin-top:0"/><button class="btn bpri" onclick="addRep()" style="flex-shrink:0;padding:8px 14px">Add</button></div></div>
+  <div class="ss"><div class="st">⚙️ Preferences</div>
+    <div class="sr"><div><div class="sl">Duplicate detection</div><div class="ssb">Flag similar tasks across sources</div></div><div class="tog on" id="dupTog" onclick="this.classList.toggle('on')"></div></div>
+    <div class="sr"><div><div class="sl">Auto-sync on open</div></div><div class="tog on" id="autoTog" onclick="this.classList.toggle('on')"></div></div>
+    <div class="sr"><div><div class="sl">Email scan depth</div><div class="ssb">Emails per sync</div></div><select class="sinput" id="edepth" style="width:70px;padding:4px 6px;margin:0"><option value="20">20</option><option value="50" selected>50</option><option value="100">100</option></select></div>
+  </div>
+  <div class="ss"><div class="st">🎨 Theme</div><div class="swatches"><div class="sw active" style="background:linear-gradient(135deg,#080c18,#0e1428)" data-t="default" onclick="setTheme('default')"></div><div class="sw" style="background:linear-gradient(135deg,#100e0a,#231e18)" data-t="warm" onclick="setTheme('warm')"></div><div class="sw" style="background:linear-gradient(135deg,#080f1a,#111e30)" data-t="cool" onclick="setTheme('cool')"></div><div class="sw" style="background:linear-gradient(135deg,#060f0a,#112118)" data-t="forest" onclick="setTheme('forest')"></div><div class="sw" style="background:linear-gradient(135deg,#f4f6fb,#eaeef7);border:1px solid #ddd" data-t="light" onclick="setTheme('light')"></div></div></div>
+  <div class="ss" style="padding-bottom:10px"><button class="btn bdng bfull" onclick="clearAll()">Clear All Data</button></div>
+</div>
+
+<!-- TASK DETAIL -->
+<div class="ov" id="detailOv" onclick="hideP('detail')"></div>
+<div class="panel" id="detailPanel"><div class="ph"></div><div id="detailContent"></div></div>
+
+<!-- PROJECT DETAIL -->
+<div class="ov" id="projectOv" onclick="hideP('project')"></div>
+<div class="panel" id="projectPanel"><div class="ph"></div><div id="projContent"></div></div>
+
+<!-- ADD TASK -->
+<div class="ov" id="addtaskOv" onclick="hideP('addtask')"></div>
+<div class="panel" id="addtaskPanel">
+  <div class="ph"></div><div class="ptitle">Add Task</div>
+  <div class="ss">
+    <input class="sinput" id="nTitle" placeholder="Task title…" style="margin-bottom:10px"/>
+    <input class="sinput" id="nDue" type="date" style="margin-bottom:10px"/>
+    <select class="sinput" id="nPri" style="margin-bottom:10px"><option value="high">↑ High</option><option value="medium" selected>→ Medium</option><option value="low">↓ Low</option></select>
+    <textarea class="sinput" id="nNotes" rows="3" placeholder="Notes…" style="resize:none;line-height:1.5;margin-bottom:10px"></textarea>
+    <button class="btn bpri bfull" onclick="addManual()">Add Task</button>
+  </div>
+</div>
+
+<!-- WHATSAPP -->
+<div class="ov" id="whatsappOv" onclick="hideP('whatsapp')"></div>
+<div class="panel" id="whatsappPanel">
+  <div class="ph"></div><div class="ptitle">📱 WhatsApp → Tasks</div>
+  <div class="psub">Paste any WhatsApp conversation below — Claude will extract all action items automatically.</div>
+  <div class="ss">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Chat / Group name (optional)</div>
+    <input class="sinput" id="waGrp" placeholder="e.g. MBZUAI Comms Team" style="margin-bottom:10px"/>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Paste conversation</div>
+    <textarea class="sinput" id="waTxt" rows="7" style="resize:none;line-height:1.6;margin-bottom:10px" placeholder="[10:32] Sarah: Can you send me the report by Friday?&#10;[10:35] Ahmed: Don't forget the budget review next Tuesday"></textarea>
+    <button class="btn bpri bfull" id="waBtn" onclick="parseWA()">✦ Extract Tasks with AI</button>
+    <div id="waRes" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════ STATE ═══════════════
+let tasks=[], projects={}, cfg={}, curFilter='all', curView='today', curTab='dashboard';
+
+// ═══════════════ INIT ═══════════════
+function init(){
+  cfg=JSON.parse(localStorage.getItem('tp_cfg')||'{}');
+  const sv=localStorage.getItem('tp_tasks'); if(sv) tasks=JSON.parse(sv);
+  if(cfg.theme) applyTheme(cfg.theme);
+  if(!cfg.onboarded) return;
+  launchApp();
+}
+
+function launchApp(){
+  document.getElementById('ob').classList.add('hidden');
+  document.getElementById('app').style.display='flex';
+  popSettings(); buildProjects(); renderView(); updateStats();
+  if(cfg.autoSync!==false&&(cfg.asToken||cfg.msToken)&&tasks.length===0) setTimeout(syncAll,700);
+}
+
+function completeOB(){
+  const a=document.getElementById('ob1').value.trim();
+  const m=document.getElementById('ob2').value.trim();
+  const c=document.getElementById('ob3').value.trim();
+  if(a) cfg.asToken=a; if(m) cfg.msToken=m;
+  if(c){cfg.clKey=c;cfg.aiEnabled=true;}
+  cfg.onboarded=true; cfg.directReports=[]; saveCfg(); launchApp();
+  showToast('Welcome! Syncing…'); setTimeout(syncAll,800);
+}
+
+function skipOB(){
+  cfg.onboarded=true; cfg.directReports=[];
+  saveCfg(); loadDemo(); launchApp(); showToast('Demo mode');
+}
+
+function saveCfg(){localStorage.setItem('tp_cfg',JSON.stringify(cfg));}
+function saveTasks(){localStorage.setItem('tp_tasks',JSON.stringify(tasks));}
+
+// ═══════════════ SYNC ═══════════════
+async function syncAll(){
+  setSS('syncing'); showToast('Syncing…');
+  const p=[];
+  if(cfg.asToken) p.push(fetchAsana());
+  if(cfg.msToken){p.push(fetchOutlook());p.push(fetchTeams());}
+  if(!p.length&&!tasks.length){showToast('Add tokens in Settings');setSS('error');return;}
+  await Promise.allSettled(p);
+  if(cfg.aiEnabled&&cfg.clKey&&cfg._emails?.length) await runAI(cfg._emails,'email');
+  detectDups(); buildProjects(); saveTasks(); renderView(); updateStats(); setSS('ok');
+  showToast('Synced ✓');
+}
+
+// ═══════════════ ASANA ═══════════════
+async function fetchAsana(){
+  try{
+    const me=await aFetch('/users/me?opt_fields=gid,name,workspaces');
+    cfg._asUid=me.data.gid; saveCfg();
+    const ws=(me.data.workspaces||[])[0]?.gid; if(!ws) return;
+    const r=await aFetch(`/tasks?workspace=${ws}&assignee=me&completed_since=now&opt_fields=name,due_on,created_at,projects.name,notes,assignee.name,permalink_url&limit=100`);
+    const mine=(r.data||[]).map(t=>mkAsanaTask(t,'mine'));
+    let team=[];
+    for(const rep of cfg.directReports||[]){
+      try{
+        const us=await aFetch(`/users?workspace=${ws}&opt_fields=gid,name`);
+        const u=(us.data||[]).find(x=>x.name.toLowerCase().includes(rep.toLowerCase()));
+        if(u){
+          const rt=await aFetch(`/tasks?workspace=${ws}&assignee=${u.gid}&completed_since=now&opt_fields=name,due_on,created_at,projects.name,notes,assignee.name,permalink_url&limit=50`);
+          team=team.concat((rt.data||[]).map(t=>({...mkAsanaTask(t,'team'),assigneeName:u.name,isDirectReport:true})));
+        }
+      }catch(e){}
+    }
+    tasks=tasks.filter(t=>t.source!=='asana');
+    tasks.push(...mine,...team);
+  }catch(e){showToast('Asana: '+(e.message||'error'));}
+}
+
+function mkAsanaTask(t,own){
+  return{id:'as_'+t.gid,title:t.name,source:'asana',own,assigneeName:t.assignee?.name||null,dueDate:t.due_on||null,assignedDate:t.created_at?.split('T')[0]||null,project:t.projects?.[0]?.name||'Asana',notes:t.notes||'',url:t.permalink_url||'',priority:'medium',done:false,isDup:false};
+}
+
+async function aFetch(p){
+  const r=await fetch('https://app.asana.com/api/1.0'+p,{headers:{'Authorization':'Bearer '+cfg.asToken,'Accept':'application/json'}});
+  if(!r.ok) throw new Error('Asana '+r.status); return r.json();
+}
+
+// ═══════════════ OUTLOOK ═══════════════
+async function fetchOutlook(){
+  try{
+    const ls=await gFetch('/me/todo/lists');
+    tasks=tasks.filter(t=>t.source!=='outlook');
+    for(const l of (ls.value||[]).slice(0,6)){
+      const r=await gFetch(`/me/todo/lists/${l.id}/tasks?$filter=status ne 'completed'&$top=50`);
+      tasks.push(...(r.value||[]).map(t=>({id:'ms_'+t.id,title:t.title,source:'outlook',own:'mine',assigneeName:null,dueDate:t.dueDateTime?.dateTime?.split('T')[0]||null,assignedDate:t.createdDateTime?.split('T')[0]||null,project:l.displayName,notes:t.body?.content||'',priority:t.importance==='high'?'high':'medium',done:t.status==='completed',isDup:false})));
+    }
+    if(cfg.aiEnabled){
+      const depth=parseInt(document.getElementById('edepth')?.value||50);
+      const em=await gFetch(`/me/messages?$top=${depth}&$orderby=receivedDateTime desc&$select=subject,bodyPreview,receivedDateTime,from`);
+      cfg._emails=em.value||[];
+    }
+  }catch(e){showToast('Outlook: '+(e.message||'error'));}
+}
+
+// ═══════════════ TEAMS ═══════════════
+async function fetchTeams(){
+  if(!cfg.aiEnabled&&!cfg.clKey) return;
+  try{
+    const tr=await gFetch('/me/joinedTeams?$select=id,displayName');
+    let msgs=[];
+    for(const tm of (tr.value||[]).slice(0,6)){
+      const cr=await gFetch(`/teams/${tm.id}/channels?$select=id,displayName`);
+      for(const ch of (cr.value||[]).slice(0,4)){
+        const key=`${tm.id}:${ch.id}`;
+        if(cfg.selCh&&!cfg.selCh.includes(key)) continue;
+        try{
+          const mr=await gFetch(`/teams/${tm.id}/channels/${ch.id}/messages?$top=30&$select=id,body,from,createdDateTime`);
+          msgs=msgs.concat((mr.value||[]).map(m=>({text:m.body?.content?.replace(/<[^>]+>/g,'').trim()||'',from:m.from?.user?.displayName||'?',date:m.createdDateTime?.split('T')[0],channel:`${tm.displayName} › ${ch.displayName}`})).filter(m=>m.text.length>10));
+        }catch(e){}
+      }
+    }
+    if(msgs.length&&cfg.aiEnabled&&cfg.clKey) await runAI(msgs,'teams');
+  }catch(e){console.warn('Teams:',e);}
+}
+
+async function loadChannels(){
+  if(!cfg.msToken){showToast('Connect Microsoft first');return;}
+  document.getElementById('loadChBtn').textContent='Loading…';
+  try{
+    const tr=await gFetch('/me/joinedTeams?$select=id,displayName');
+    const items=[];
+    for(const tm of (tr.value||[]).slice(0,8)){
+      const cr=await gFetch(`/teams/${tm.id}/channels?$select=id,displayName`);
+      (cr.value||[]).forEach(ch=>items.push({key:`${tm.id}:${ch.id}`,team:tm.displayName,ch:ch.displayName}));
+    }
+    cfg._chMeta=items;
+    if(!cfg.selCh) cfg.selCh=items.map(i=>i.key);
+    saveCfg(); renderChList();
+  }catch(e){showToast('Could not load channels');}
+  document.getElementById('loadChBtn').textContent='Reload Channels';
+}
+
+function renderChList(){
+  const items=cfg._chMeta||[]; const sel=cfg.selCh||(items.map(i=>i.key));
+  const c=document.getElementById('chlist');
+  if(!items.length){c.innerHTML='<div style="color:var(--muted);font-size:13px">No channels found. Connect Microsoft token first.</div>';return;}
+  c.innerHTML=items.map(i=>`<div class="chitem" onclick="toggleCh('${i.key}')"><div class="chk ${sel.includes(i.key)?'on':''}" id="ci_${i.key.replace(/[^a-z0-9]/gi,'_')}">${sel.includes(i.key)?'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}</div><div><div class="chn">${esc(i.ch)}</div><div class="cht">${esc(i.team)}</div></div></div>`).join('');
+}
+
+function toggleCh(key){
+  if(!cfg.selCh) cfg.selCh=(cfg._chMeta||[]).map(i=>i.key);
+  const i=cfg.selCh.indexOf(key);
+  if(i>=0) cfg.selCh.splice(i,1); else cfg.selCh.push(key);
+  saveCfg(); renderChList();
+}
+
+async function gFetch(p){
+  const r=await fetch('https://graph.microsoft.com/v1.0'+p,{headers:{'Authorization':'Bearer '+cfg.msToken,'Accept':'application/json'}});
+  if(!r.ok) throw new Error('Graph '+r.status); return r.json();
+}
+
+// ═══════════════ AI ═══════════════
+async function runAI(items,type){
+  if(!cfg.clKey||!items.length) return;
+  const cs=type==='email'?15:20, chunks=[];
+  for(let i=0;i<items.length;i+=cs) chunks.push(items.slice(i,i+cs));
+  for(let ci=0;ci<Math.min(chunks.length,3);ci++){
+    showScan(`Scanning ${type==='email'?'emails':'Teams'} ${ci*cs+1}–${Math.min((ci+1)*cs,items.length)}…`);
+    const chunk=chunks[ci];
+    const txt=type==='email'
+      ?chunk.map((e,i)=>`[${i+1}] ${e.receivedDateTime?.split('T')[0]} | ${e.from?.emailAddress?.name} | ${e.subject}\n${e.bodyPreview?.slice(0,250)}`).join('\n\n---\n\n')
+      :chunk.map((m,i)=>`[${i+1}] ${m.date} | ${m.channel} | ${m.from}: ${m.text.slice(0,250)}`).join('\n\n---\n\n');
+    const prompt=`Extract actionable tasks from these ${type==='email'?'emails':'Teams messages'}.
+Return ONLY a JSON array: [{title,dueDate(YYYY-MM-DD or null),priority(high/medium/low),source,notes}]
+Only real action items. No greetings, FYIs, status updates.\n\n${txt}`;
+    try{
+      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':cfg.clKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,messages:[{role:'user',content:prompt}]})});
+      const data=await res.json();
+      const extracted=JSON.parse((data.content?.[0]?.text||'[]').replace(/```json|```/g,'').trim());
+      const newT=extracted.map((t,i)=>({id:`ai_${type}_${Date.now()}_${ci}_${i}`,title:t.title,source:type==='email'?'ai':'teams',own:'mine',assigneeName:null,dueDate:t.dueDate||null,assignedDate:new Date().toISOString().split('T')[0],project:`${type==='email'?'📧':'💬'} ${(t.source||'').slice(0,45)}`,notes:t.notes||'',priority:t.priority||'medium',done:false,isDup:false}));
+      const existIds=new Set(tasks.map(t=>t.title.toLowerCase()));
+      tasks.push(...newT.filter(t=>!existIds.has(t.title.toLowerCase())));
+    }catch(e){console.warn('AI err:',e);}
+  }
+  hideScan();
+}
+
+// ═══════════════ WHATSAPP ═══════════════
+async function parseWA(){
+  const txt=document.getElementById('waTxt').value.trim();
+  const grp=document.getElementById('waGrp').value.trim()||'WhatsApp';
+  if(!txt){showToast('Paste a message first');return;}
+  if(!cfg.clKey){showToast('Add Anthropic key in Settings');return;}
+  const btn=document.getElementById('waBtn'),res=document.getElementById('waRes');
+  btn.textContent='⏳ Analysing…'; btn.disabled=true; res.innerHTML='';
+  const prompt=`Extract all actionable tasks from this WhatsApp conversation from "${grp}".
+Return ONLY a JSON array: [{title,dueDate(YYYY-MM-DD or null),priority,assignedTo,notes}]
+Only real action items.\n\n${txt}`;
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':cfg.clKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const data=await r.json();
+    const ext=JSON.parse((data.content?.[0]?.text||'[]').replace(/```json|```/g,'').trim());
+    if(!ext.length){res.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:12px">No clear action items found.</div>';return;}
+    window._waExt=ext; window._waGrp=grp;
+    res.innerHTML=`<div style="font-size:12px;color:var(--green);margin-bottom:10px">✓ Found ${ext.length} task${ext.length>1?'s':''}</div>`+ext.map((t,i)=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:7px" id="wa_${i}"><div style="font-size:13px;font-weight:500">${esc(t.title)}</div><div style="display:flex;gap:8px;margin-top:5px;font-size:11px;color:var(--muted);align-items:center">${t.dueDate?`<span>📅 ${t.dueDate}</span>`:''} ${t.assignedTo?`<span>👤 ${esc(t.assignedTo)}</span>`:''}<span class="badge b-wa" style="margin-left:auto">WhatsApp</span><button onclick="addWAOne(${i})" style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer">+Add</button></div></div>`).join('')+`<button class="btn bpri bfull" style="margin-top:4px" onclick="addWAAll()">Add All ${ext.length} Tasks</button>`;
+  }catch(e){res.innerHTML=`<div style="color:var(--red);font-size:13px">Error: ${e.message}</div>`;}
+  btn.textContent='✦ Extract Tasks with AI'; btn.disabled=false;
+}
+
+function addWAOne(i){
+  const t=window._waExt?.[i]; if(!t) return;
+  tasks.unshift({id:`wa_${Date.now()}_${i}`,title:t.title,source:'whatsapp',own:'mine',assigneeName:t.assignedTo||null,dueDate:t.dueDate||null,assignedDate:new Date().toISOString().split('T')[0],project:`📱 ${window._waGrp||'WhatsApp'}`,notes:t.notes||'',priority:t.priority||'medium',done:false,isDup:false});
+  const el=document.getElementById(`wa_${i}`); if(el){el.style.opacity='.3';el.style.pointerEvents='none';}
+  detectDups(); buildProjects(); saveTasks(); updateStats(); renderView(); showToast('Added ✓');
+}
+function addWAAll(){(window._waExt||[]).forEach((_,i)=>addWAOne(i)); showToast(`${window._waExt?.length||0} tasks added ✓`);}
+
+// ═══════════════ DUPLICATES ═══════════════
+function detectDups(){
+  if(!document.getElementById('dupTog')?.classList.contains('on')) return;
+  const a=tasks.filter(t=>!t.done);
+  a.forEach(t=>{t.isDup=false;});
+  for(let i=0;i<a.length;i++) for(let j=i+1;j<a.length;j++) if(sim(a[i].title,a[j].title)){a[i].isDup=true;a[j].isDup=true;}
+}
+
+function sim(a,b){
+  if(!a||!b) return false;
+  const n=s=>s.toLowerCase().replace(/[^a-z0-9\s]/g,'').trim();
+  const na=n(a),nb=n(b); if(na===nb) return true;
+  const wa=new Set(na.split(/\s+/).filter(w=>w.length>3));
+  const wb=new Set(nb.split(/\s+/).filter(w=>w.length>3));
+  if(!wa.size||!wb.size) return false;
+  let ov=0; for(const w of wa) if(wb.has(w)) ov++;
+  return(ov/Math.max(wa.size,wb.size))>=0.6;
+}
+
+// ═══════════════ PROJECTS ═══════════════
+function buildProjects(){
+  projects={};
+  for(const t of tasks){
+    const p=t.project||'Uncategorised';
+    if(!projects[p]) projects[p]={name:p,tasks:[],source:t.source};
+    projects[p].tasks.push(t);
+  }
+}
+
+function renderProjects(){
+  const c=document.getElementById('tlist');
+  const list=Object.values(projects).sort((a,b)=>b.tasks.length-a.tasks.length);
+  if(!list.length){c.innerHTML='<div class="empty"><div class="ei">📁</div><div class="et">No projects yet</div><div class="es">Sync your tasks to see projects here.</div></div>';return;}
+  c.innerHTML=list.map(p=>{
+    const done=p.tasks.filter(t=>t.done).length, total=p.tasks.length;
+    const pct=total?Math.round(done/total*100):0;
+    const ov=p.tasks.filter(t=>getSt(t)==='s-ov').length;
+    const td=p.tasks.filter(t=>getSt(t)==='s-td').length;
+    const assignees=[...new Set(p.tasks.map(t=>t.assigneeName).filter(Boolean))];
+    return`<div class="pcard" onclick="showProjDetail('${esc(p.name).replace(/'/g,"\\'")}')"><div class="pch"><div><div class="pname">${esc(p.name)}</div><div class="psrc">${(p.source||'').toUpperCase()}</div></div><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted)"><polyline points="9 18 15 12 9 6"/></svg></div><div class="pbar"><div class="pfill" style="width:${pct}%"></div></div><div class="plabels"><span>${done}/${total} done</span><span>${pct}%</span></div><div class="pmeta">${ov?`<span class="pmi" style="color:var(--red)">🔴 ${ov} overdue</span>`:''} ${td?`<span class="pmi" style="color:var(--accent)">⚡ ${td} today</span>`:''} ${assignees.length?`<span class="pmi">👤 ${assignees.slice(0,2).join(', ')}${assignees.length>2?' +'+(assignees.length-2):''}</span>`:''}</div></div>`;
+  }).join('');
+}
+
+function showProjDetail(name){
+  const p=projects[name]; if(!p) return;
+  const done=p.tasks.filter(t=>t.done).length, total=p.tasks.length;
+  const pct=total?Math.round(done/total*100):0;
+  const assignees=[...new Set(p.tasks.map(t=>t.assigneeName).filter(Boolean))];
+  const dates=p.tasks.map(t=>t.dueDate).filter(Boolean).sort();
+  const ovTasks=p.tasks.filter(t=>getSt(t)==='s-ov');
+  const tdTasks=p.tasks.filter(t=>getSt(t)==='s-td');
+  document.getElementById('projContent').innerHTML=`
+    <div class="ptitle">${esc(name)}</div>
+    <div style="padding:8px 20px 0"><span class="badge b-${p.source||'as'}">${(p.source||'').toUpperCase()}</span></div>
+    <div style="padding:14px 20px 0">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px">Completion</div>
+      <div class="pbar" style="height:8px"><div class="pfill" style="width:${pct}%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:12px;color:var(--muted);margin-top:5px"><span>${done} of ${total} tasks done</span><span>${pct}%</span></div>
+    </div>
+    ${dates.length?`<div style="padding:12px 20px 0"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px">Date Range</div><div style="font-size:14px">${dates[0]} → ${dates[dates.length-1]}</div></div>`:''}
+    ${assignees.length?`<div style="padding:12px 20px 0"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px">Assigned To</div><div style="flex-wrap:wrap;display:flex">${assignees.map(a=>`<span class="achip"><span class="aav">${a.charAt(0)}</span>${esc(a)}</span>`).join('')}</div></div>`:''}
+    ${ovTasks.length?`<div style="padding:12px 20px 0"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--red);margin-bottom:5px">Overdue (${ovTasks.length})</div>${ovTasks.slice(0,3).map(t=>`<div style="font-size:13px;padding:5px 0;border-bottom:1px solid var(--border);color:var(--red)">• ${esc(t.title)}</div>`).join('')}${ovTasks.length>3?`<div style="font-size:12px;color:var(--muted);padding-top:4px">+${ovTasks.length-3} more</div>`:''}</div>`:''}
+    ${tdTasks.length?`<div style="padding:12px 20px 0"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:5px">Due Today (${tdTasks.length})</div>${tdTasks.slice(0,3).map(t=>`<div style="font-size:13px;padding:5px 0;border-bottom:1px solid var(--border);color:var(--accent)">• ${esc(t.title)}</div>`).join('')}</div>`:''}
+    <div style="padding:14px 20px;display:flex;gap:10px;margin-top:8px">
+      <button class="btn bpri" style="flex:1" onclick="filterByProj('${esc(name).replace(/'/g,"\\'")}')">View All Tasks →</button>
+      <button class="btn bsec" onclick="hideP('project')">Close</button>
+    </div>`;
+  showP('project');
+}
+
+function filterByProj(name){
+  hideP('project'); curFilter='proj:'+name; curView='all';
+  document.querySelectorAll('.vbtn').forEach(el=>el.classList.toggle('active',el.dataset.v==='all'));
+  document.querySelectorAll('.chip').forEach(el=>el.classList.remove('active'));
+  switchTab('dashboard'); renderView();
+}
+
+// ═══════════════ TEAM TAB ═══════════════
+function renderTeam(){
+  const c=document.getElementById('tlist');
+  const tt=tasks.filter(t=>t.own==='team'||t.isDirectReport);
+  if(!tt.length){
+    c.innerHTML=`<div class="empty"><div class="ei">👥</div><div class="et">No team tasks yet</div><div class="es">Add your direct reports in Settings, then sync.</div></div><div style="padding:0 20px"><button class="btn bteal bfull" onclick="showP('settings')">Go to Settings →</button></div>`;
+    return;
+  }
+  const byA={};
+  for(const t of tt){const n=t.assigneeName||'Unknown';if(!byA[n]) byA[n]=[];byA[n].push(t);}
+  c.innerHTML=Object.entries(byA).map(([name,tl])=>{
+    const ov=tl.filter(t=>getSt(t)==='s-ov').length;
+    return`<div class="slabel" style="color:var(--teal)">👤 ${esc(name)} — ${tl.length} task${tl.length>1?'s':''} ${ov?`<span style="color:var(--red)">(${ov} overdue)</span>`:''}</div>${tl.sort((a,b)=>{const o={'s-ov':0,'s-td':1,'s-up':2,'s-dn':3};return(o[getSt(a)]??2)-(o[getSt(b)]??2);}).map(t=>renderCard(t)).join('')}`;
+  }).join('');
+}
+
+// ═══════════════ DIRECT REPORTS ═══════════════
+function addRep(){
+  const n=document.getElementById('newRep').value.trim(); if(!n) return;
+  if(!cfg.directReports) cfg.directReports=[];
+  if(!cfg.directReports.includes(n)){cfg.directReports.push(n);saveCfg();renderRepsList();showToast(n+' added');}
+  document.getElementById('newRep').value='';
+}
+function removeRep(n){cfg.directReports=(cfg.directReports||[]).filter(r=>r!==n);saveCfg();renderRepsList();}
+function renderRepsList(){
+  const c=document.getElementById('repsList'); if(!c) return;
+  const reps=cfg.directReports||[];
+  c.innerHTML=reps.length?reps.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><div><div style="font-size:14px">${esc(r)}</div><div style="font-size:11px;color:var(--muted)">Direct Report</div></div><button onclick="removeRep('${esc(r)}')" style="background:rgba(255,77,109,.1);color:var(--red);border:1px solid rgba(255,77,109,.22);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">Remove</button></div>`).join(''):'<div style="color:var(--muted);font-size:13px;padding:6px 0">No direct reports added yet.</div>';
+}
+
+// ═══════════════ RENDER ═══════════════
+function renderView(){
+  if(curTab==='projects'){renderProjects();return;}
+  if(curTab==='team'){renderTeam();return;}
+  renderTaskList();
+}
+
+function renderTaskList(){
+  const c=document.getElementById('tlist');
+  const now=new Date(); now.setHours(0,0,0,0);
+
+  let filtered=tasks.filter(t=>{
+    // View filter
+    if(curView!=='all'){
+      const st=getSt(t);
+      if(t.done&&curView!=='all') return false;
+      if(curView==='today') return st==='s-ov'||st==='s-td';
+      const due=t.dueDate?new Date(t.dueDate+'T00:00:00'):null;
+      if(st==='s-ov') return true; // always show overdue
+      if(curView==='week'){ const end=new Date(now);end.setDate(end.getDate()+7);return due&&due>=now&&due<end; }
+      if(curView==='month'){ const end=new Date(now);end.setDate(end.getDate()+31);return due&&due>=now&&due<end; }
+    }
+    return true;
+  });
+
+  // Source/type filter
+  if(curFilter!=='all'){
+    filtered=filtered.filter(t=>{
+      if(curFilter==='mine') return t.own==='mine';
+      if(curFilter==='team') return t.own==='team'||t.isDirectReport;
+      if(curFilter==='overdue') return getSt(t)==='s-ov';
+      if(curFilter==='today-due') return getSt(t)==='s-td';
+      if(curFilter==='upcoming') return getSt(t)==='s-up';
+      if(curFilter==='duplicate') return t.isDup;
+      if(curFilter.startsWith('proj:')) return t.project===curFilter.slice(5);
+      return t.source===curFilter;
+    });
+  }
+
+  if(!filtered.length){
+    c.innerHTML=`<div class="empty"><div class="ei">✨</div><div class="et">${tasks.length===0?'No tasks yet':'All clear!'}</div><div class="es">${tasks.length===0?'Connect accounts in Settings, then sync.':'No tasks match this view.'}</div></div>`;
+    return;
+  }
+
+  const ord={'s-ov':0,'s-td':1,'s-up':2,'s-dn':3};
+  filtered.sort((a,b)=>{
+    const sa=ord[getSt(a)]??2, sb=ord[getSt(b)]??2;
+    if(sa!==sb) return sa-sb;
+    if(a.dueDate&&b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+    return 0;
+  });
+
+  const groups={};
+  const gl={'s-ov':'🔴 Overdue','s-td':'⚡ Today','s-up':'📅 Upcoming','s-dn':'✅ Done'};
+  for(const t of filtered){const s=getSt(t);if(!groups[s]) groups[s]=[];groups[s].push(t);}
+
+  let html='';
+  for(const[s,grp] of Object.entries(groups)){
+    html+=`<div class="slabel">${gl[s]||s} <span style="font-weight:400;opacity:.55">(${grp.length})</span></div>`;
+    html+=grp.map(t=>renderCard(t)).join('');
+  }
+  c.innerHTML=html;
+}
+
+function renderCard(t){
+  const s=getSt(t);
+  const di=t.dueDate?fmtD(t.dueDate):null;
+  const ai=t.assignedDate?fmtD(t.assignedDate):null;
+  const sb={'outlook':'<span class="badge b-ou">Outlook</span>','asana':'<span class="badge b-as">Asana</span>','teams':'<span class="badge b-te">Teams</span>','whatsapp':'<span class="badge b-wa">WhatsApp</span>','ai':'<span class="badge b-ai">✦ AI</span>','manual':''}[t.source]||'';
+  return`<div class="tcard ${s}" onclick="showDetail('${t.id}')"><div class="th"><div class="tck" onclick="event.stopPropagation();toggleDone('${t.id}')">${t.done?'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}</div><div class="ttl">${esc(t.title)}</div></div><div class="tbadges">${sb}${t.isDirectReport||t.own==='team'?'<span class="badge b-tm">👤 Team</span>':''}${t.priority==='high'?'<span class="badge b-hi">↑ High</span>':''}${s==='s-ov'?'<span class="badge b-ov">Overdue</span>':''}${s==='s-td'?'<span class="badge b-td">Due Today</span>':''}${t.isDup?'<span class="badge b-dp">⚠ Dupe</span>':''}</div><div class="tmeta">${di?`<div class="tdate ${di.cls}">📅 Due ${di.text}</div>`:''}${ai?`<div class="tdate">Assigned ${ai.text}</div>`:''}${t.assigneeName?`<div class="tassign">👤 ${esc(t.assigneeName)}</div>`:''}${t.project?`<div class="tproj" onclick="event.stopPropagation();showProjDetail('${esc(t.project).replace(/'/g,"\\'")}')">📁 ${esc(t.project)}</div>`:''}</div></div>`;
+}
+
+// ═══════════════ TASK DETAIL ═══════════════
+function showDetail(id){
+  const t=tasks.find(t=>t.id===id); if(!t) return;
+  const s=getSt(t), di=t.dueDate?fmtD(t.dueDate):null;
+  const sb={'outlook':'<span class="badge b-ou">Outlook</span>','asana':'<span class="badge b-as">Asana</span>','teams':'<span class="badge b-te">Teams</span>','whatsapp':'<span class="badge b-wa">WhatsApp</span>','ai':'<span class="badge b-ai">✦ AI Extracted</span>','manual':''}[t.source]||'';
+  document.getElementById('detailContent').innerHTML=`
+    <div class="ptitle">${esc(t.title)}</div>
+    <div style="padding:8px 20px 0;display:flex;gap:5px;flex-wrap:wrap">${sb}${t.priority==='high'?'<span class="badge b-hi">↑ High</span>':''}${t.isDup?'<span class="badge b-dp">⚠ Possible Duplicate</span>':''}${t.own==='team'||t.isDirectReport?'<span class="badge b-tm">Team Task</span>':''}</div>
+    <div style="height:1px;background:var(--border);margin:14px 20px"></div>
+    <div style="padding:0 20px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px">Due Date</div><div style="font-size:14px;color:${s==='s-ov'?'var(--red)':s==='s-td'?'var(--accent)':'var(--text)'}">${di?`${t.dueDate} (${di.text})`:'No due date'}</div></div>
+    <div style="padding:12px 20px 0"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px">Assigned / Created</div><div style="font-size:14px">${t.assignedDate||'Unknown'}</div></div>
+    ${t.assigneeName?`<div style="padding:12px 20px 0"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px">Assignee</div><div style="font-size:14px;color:var(--teal)">👤 ${esc(t.assigneeName)}</div></div>`:''}
+    ${t.project?`<div style="padding:12px 20px 0"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px">Project</div><div style="font-size:14px;color:var(--blue);cursor:pointer" onclick="hideP('detail');showProjDetail('${esc(t.project).replace(/'/g,"\\'")}')">📁 ${esc(t.project)} →</div></div>`:''}
+    ${t.notes?`<div style="padding:12px 20px 0"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px">Notes</div><div style="background:var(--bg3);border-radius:var(--radius-sm);padding:11px 12px;font-size:13px;color:var(--muted);line-height:1.7;max-height:130px;overflow-y:auto;font-style:italic">${esc(t.notes.slice(0,400))}</div></div>`:''}
+    ${t.isDup?`<div style="padding:10px 20px 0"><div style="background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.2);border-radius:var(--radius-sm);padding:9px 12px;font-size:12px;color:#c084fc">⚠ Similar to another task — check if both are needed.</div></div>`:''}
+    ${t.url?`<div style="padding:10px 20px 0"><a href="${t.url}" target="_blank" style="color:var(--accent);font-size:13px">Open in Asana →</a></div>`:''}
+    <div style="padding:14px 20px;display:flex;gap:10px"><button class="btn bpri" style="flex:1" onclick="toggleDone('${t.id}');hideP('detail')">${t.done?'Mark Incomplete':'Mark Complete ✓'}</button><button class="btn bdng" onclick="delTask('${t.id}');hideP('detail')">Delete</button></div>`;
+  showP('detail');
+}
+
+// ═══════════════ ACTIONS ═══════════════
+function toggleDone(id){const t=tasks.find(t=>t.id===id);if(t){t.done=!t.done;saveTasks();renderView();updateStats();}}
+function delTask(id){tasks=tasks.filter(t=>t.id!==id);buildProjects();saveTasks();renderView();updateStats();showToast('Deleted');}
+
+function addManual(){
+  const title=document.getElementById('nTitle').value.trim(); if(!title){showToast('Enter a title');return;}
+  tasks.unshift({id:'man_'+Date.now(),title,source:'manual',own:'mine',assigneeName:null,dueDate:document.getElementById('nDue').value||null,assignedDate:new Date().toISOString().split('T')[0],project:'Manual',notes:document.getElementById('nNotes').value,priority:document.getElementById('nPri').value,done:false,isDup:false});
+  ['nTitle','nDue','nNotes'].forEach(id=>document.getElementById(id).value='');
+  detectDups(); buildProjects(); saveTasks(); renderView(); updateStats(); hideP('addtask'); showToast('Added ✓');
+}
+
+// ═══════════════ STATS ═══════════════
+function updateStats(){
+  const a=tasks.filter(t=>!t.done);
+  document.getElementById('stOv').textContent=a.filter(t=>getSt(t)==='s-ov').length;
+  document.getElementById('stTd').textContent=a.filter(t=>getSt(t)==='s-td').length;
+  document.getElementById('stUp').textContent=a.filter(t=>getSt(t)==='s-up').length;
+  document.getElementById('stTm').textContent=a.filter(t=>t.own==='team'||t.isDirectReport).length;
+  document.getElementById('stDp').textContent=tasks.filter(t=>t.isDup).length;
+}
+
+// ═══════════════ HELPERS ═══════════════
+function getSt(t){
+  if(t.done) return 's-dn';
+  if(!t.dueDate) return 's-up';
+  const now=new Date();now.setHours(0,0,0,0);
+  const due=new Date(t.dueDate+'T00:00:00');
+  if(due<now) return 's-ov';
+  if(due.toDateString()===now.toDateString()) return 's-td';
+  return 's-up';
+}
+
+function fmtD(ds){
+  const d=new Date(ds+'T00:00:00'),now=new Date();now.setHours(0,0,0,0);
+  const diff=Math.round((d-now)/86400000);
+  if(diff===0) return{text:'Today',cls:'amber'};
+  if(diff===-1) return{text:'Yesterday',cls:'red'};
+  if(diff<0) return{text:Math.abs(diff)+'d overdue',cls:'red'};
+  if(diff===1) return{text:'Tomorrow',cls:''};
+  if(diff<7) return{text:d.toLocaleDateString('en',{weekday:'short'}),cls:''};
+  return{text:d.toLocaleDateString('en',{month:'short',day:'numeric'}),cls:''};
+}
+
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ═══════════════ VIEW / FILTER / TAB ═══════════════
+function setView(v){
+  curView=v;
+  document.querySelectorAll('.vbtn').forEach(el=>el.classList.toggle('active',el.dataset.v===v));
+  renderView();
+}
+
+function setFilter(f){
+  curFilter=f;
+  document.querySelectorAll('.chip').forEach(el=>el.classList.toggle('active',el.dataset.f===f));
+  renderView();
+}
+
+function switchTab(tab){
+  curTab=tab;
+  document.querySelectorAll('.ni').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab));
+  const isDash=tab==='dashboard';
+  document.getElementById('vsw').style.display=isDash?'flex':'none';
+  document.getElementById('fbar').style.display=isDash?'flex':'none';
+  if(tab==='whatsapp'){showP('whatsapp');curTab='dashboard';document.querySelectorAll('.ni').forEach(el=>el.classList.toggle('active',el.dataset.tab==='dashboard'));return;}
+  if(tab==='add') return;
+  renderView();
+}
+
+// ═══════════════ PANELS ═══════════════
+function showP(n){
+  document.getElementById(n+'Ov').classList.add('vis');
+  document.getElementById(n+'Panel').classList.add('vis');
+  if(n==='settings') popSettings();
+}
+function hideP(n){
+  document.getElementById(n+'Ov').classList.remove('vis');
+  document.getElementById(n+'Panel').classList.remove('vis');
+}
+
+// ═══════════════ SETTINGS ═══════════════
+function popSettings(){
+  if(cfg.asToken) document.getElementById('asTok').value=cfg.asToken;
+  if(cfg.msToken) document.getElementById('msTok').value=cfg.msToken;
+  if(cfg.clKey) document.getElementById('clKey').value=cfg.clKey;
+  if(cfg.aiEnabled) document.getElementById('aiTog').classList.add('on');
+  updateAuthTags(); renderRepsList();
+  if(cfg._chMeta) renderChList();
+}
+
+function updateAuthTags(){
+  const a=document.getElementById('asAuth'), m=document.getElementById('msAuth');
+  if(a) a.innerHTML=cfg.asToken?'<span class="atag ok">● Connected</span>':'<span class="atag no">● Not connected</span>';
+  if(m) m.innerHTML=cfg.msToken?'<span class="atag ok">● Connected</span>':'<span class="atag no">● Not connected</span>';
+}
+
+function saveAsTok(){cfg.asToken=document.getElementById('asTok').value.trim();saveCfg();updateAuthTags();showToast('Saved. Syncing Asana…');fetchAsana().then(()=>{detectDups();buildProjects();saveTasks();renderView();updateStats();setSS('ok');});}
+function saveMsTok(){cfg.msToken=document.getElementById('msTok').value.trim();saveCfg();updateAuthTags();showToast('Saved. Syncing…');Promise.all([fetchOutlook(),fetchTeams()]).then(()=>{detectDups();buildProjects();saveTasks();renderView();updateStats();setSS('ok');});}
+function saveClKey(){cfg.clKey=document.getElementById('clKey').value.trim();cfg.aiEnabled=!!cfg.clKey;saveCfg();if(cfg.aiEnabled) document.getElementById('aiTog').classList.add('on');showToast('Key saved ✓');}
+function clearAll(){if(!confirm('Clear all data?')) return;localStorage.clear();location.reload();}
+
+// ═══════════════ THEME ═══════════════
+function setTheme(t){applyTheme(t);cfg.theme=t;saveCfg();document.querySelectorAll('.sw').forEach(el=>el.classList.toggle('active',el.dataset.t===t));}
+function applyTheme(t){document.body.removeAttribute('data-theme');if(t!=='default') document.body.setAttribute('data-theme',t);}
+
+// ═══════════════ SYNC STATUS ═══════════════
+function setSS(s){const d=document.getElementById('sdot');d.className='sdot';if(s==='syncing') d.classList.add('syncing');if(s==='error') d.classList.add('error');}
+function showScan(m){const b=document.getElementById('scanbar');b.style.display='flex';document.getElementById('scanmsg').textContent=m;}
+function hideScan(){document.getElementById('scanbar').style.display='none';}
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+// ═══════════════ DEMO ═══════════════
+function loadDemo(){
+  const n=new Date(), d=o=>{const dt=new Date(n);dt.setDate(dt.getDate()+o);return dt.toISOString().split('T')[0];};
+  tasks=[
+    {id:'d1',title:'Review Q1 communications strategy deck',source:'outlook',own:'mine',assigneeName:null,dueDate:d(0),assignedDate:d(-5),project:'Communications',notes:'See slides from Sarah.',priority:'high',done:false,isDup:false},
+    {id:'d2',title:'Submit HPP Global conference speaker bio',source:'asana',own:'mine',assigneeName:null,dueDate:d(1),assignedDate:d(-3),project:'Events Team',notes:'Bio + headshot for brochure.',priority:'high',done:false,isDup:false},
+    {id:'d3',title:'Update MBZUAI social media calendar for March',source:'asana',own:'mine',assigneeName:null,dueDate:d(3),assignedDate:d(-7),project:'Social Media',notes:'Monthly review with team lead.',priority:'medium',done:false,isDup:false},
+    {id:'d4',title:'Review probation report — Comms Coordinator',source:'outlook',own:'mine',assigneeName:null,dueDate:d(2),assignedDate:d(-2),project:'HR Tasks',notes:'Probation review end of week.',priority:'high',done:false,isDup:false},
+    {id:'d5',title:'Prepare interview questions for Dr. Nigam Shah',source:'ai',own:'mine',assigneeName:null,dueDate:d(5),assignedDate:d(-1),project:'📧 HPP Conference Prep',notes:'AI extracted — Interview at HPP Global. Focus: AI in healthcare.',priority:'medium',done:false,isDup:false},
+    {id:'d6',title:'Social media calendar for MBZUAI March events',source:'ai',own:'mine',assigneeName:null,dueDate:d(3),assignedDate:d(-1),project:'📧 Team Briefing',notes:'AI extracted — possible duplicate of Asana task.',priority:'medium',done:false,isDup:true},
+    {id:'d7',title:'Draft Davos 2026 speaker video clips brief',source:'outlook',own:'mine',assigneeName:null,dueDate:d(-2),assignedDate:d(-10),project:'Events',notes:'Video production brief — overdue, follow up with video team.',priority:'high',done:false,isDup:false},
+    {id:'d8',title:'Finalise communication governance protocol',source:'asana',own:'mine',assigneeName:null,dueDate:d(7),assignedDate:d(-14),project:'Internal Ops',notes:'WhatsApp, Teams, email usage guidelines.',priority:'medium',done:false,isDup:false},
+    {id:'d9',title:'Send weekly comms digest to leadership',source:'outlook',own:'mine',assigneeName:null,dueDate:d(-1),assignedDate:d(-8),project:'Recurring',notes:'Digest should have gone out yesterday.',priority:'medium',done:false,isDup:false},
+    // Team tasks
+    {id:'d10',title:'Draft social media post for Women in AI event',source:'asana',own:'team',assigneeName:'Layla Hassan',isDirectReport:true,dueDate:d(2),assignedDate:d(-3),project:'Social Media',notes:'',priority:'medium',done:false,isDup:false},
+    {id:'d11',title:'Update speaker bios in conference folder',source:'asana',own:'team',assigneeName:'Layla Hassan',isDirectReport:true,dueDate:d(1),assignedDate:d(-2),project:'Events Team',notes:'',priority:'high',done:false,isDup:false},
+    {id:'d12',title:'Prepare analytics report for Q4',source:'asana',own:'team',assigneeName:'Omar Khalil',isDirectReport:true,dueDate:d(6),assignedDate:d(-5),project:'Analytics',notes:'',priority:'medium',done:false,isDup:false},
+    {id:'d13',title:'REELZ Studio TestFlight review',source:'asana',own:'mine',assigneeName:null,dueDate:d(10),assignedDate:d(-2),project:'Personal Projects',notes:'Review beta feedback.',priority:'low',done:true,isDup:false},
+  ];
+  cfg.directReports=['Layla Hassan','Omar Khalil']; saveCfg();
+  detectDups(); buildProjects();
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')['settings','detail','project','addtask','whatsapp'].forEach(p=>hideP(p));});
+
+init();
+</script>
+</body>
+</html>
