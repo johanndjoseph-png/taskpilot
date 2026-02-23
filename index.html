@@ -392,23 +392,48 @@ async function fetchAsana(){
   try{
     const me=await aFetch('/users/me?opt_fields=gid,name,workspaces');
     cfg._asUid=me.data.gid; saveCfg();
-    const ws=(me.data.workspaces||[])[0]?.gid; if(!ws) return;
-    const r=await aFetch(`/tasks?workspace=${ws}&assignee=me&completed_since=now&opt_fields=name,due_on,created_at,projects.name,notes,assignee.name,permalink_url&limit=100`);
-    const mine=(r.data||[]).map(t=>mkAsanaTask(t,'mine'));
-    let team=[];
-    for(const rep of cfg.directReports||[]){
-      try{
-        const us=await aFetch(`/users?workspace=${ws}&opt_fields=gid,name`);
-        const u=(us.data||[]).find(x=>x.name.toLowerCase().includes(rep.toLowerCase()));
-        if(u){
-          const rt=await aFetch(`/tasks?workspace=${ws}&assignee=${u.gid}&completed_since=now&opt_fields=name,due_on,created_at,projects.name,notes,assignee.name,permalink_url&limit=50`);
-          team=team.concat((rt.data||[]).map(t=>({...mkAsanaTask(t,'team'),assigneeName:u.name,isDirectReport:true})));
-        }
-      }catch(e){}
-    }
+    const workspaces=me.data.workspaces||[];
+    if(!workspaces.length){showToast('Asana: no workspaces found');return;}
+
     tasks=tasks.filter(t=>t.source!=='asana');
+    let mine=[], team=[];
+
+    for(const wsObj of workspaces){
+      const ws=wsObj.gid;
+      try{
+        // Try user_task_list first (most reliable)
+        const utl=await aFetch(`/users/${cfg._asUid}/user_task_list?workspace=${ws}&opt_fields=gid`);
+        const listGid=utl?.data?.gid;
+        if(listGid){
+          const r=await aFetch(`/user_task_lists/${listGid}/tasks?completed_since=now&opt_fields=name,due_on,created_at,projects.name,notes,assignee.name,permalink_url&limit=100`);
+          mine=mine.concat((r.data||[]).map(t=>mkAsanaTask(t,'mine')));
+        } else {
+          const r=await aFetch(`/tasks?workspace=${ws}&assignee=me&completed_since=now&opt_fields=name,due_on,created_at,projects.name,notes,assignee.name,permalink_url&limit=100`);
+          mine=mine.concat((r.data||[]).map(t=>mkAsanaTask(t,'mine')));
+        }
+      }catch(e){
+        try{
+          const r=await aFetch(`/tasks?workspace=${ws}&assignee=me&completed_since=now&opt_fields=name,due_on,created_at,projects.name,notes,assignee.name,permalink_url&limit=100`);
+          mine=mine.concat((r.data||[]).map(t=>mkAsanaTask(t,'mine')));
+        }catch(e2){}
+      }
+
+      for(const rep of cfg.directReports||[]){
+        try{
+          const us=await aFetch(`/users?workspace=${ws}&opt_fields=gid,name`);
+          const u=(us.data||[]).find(x=>x.name.toLowerCase().includes(rep.toLowerCase()));
+          if(u){
+            const rt=await aFetch(`/tasks?workspace=${ws}&assignee=${u.gid}&completed_since=now&opt_fields=name,due_on,created_at,projects.name,notes,assignee.name,permalink_url&limit=50`);
+            team=team.concat((rt.data||[]).map(t=>({...mkAsanaTask(t,'team'),assigneeName:u.name,isDirectReport:true})));
+          }
+        }catch(e){}
+      }
+    }
+
     tasks.push(...mine,...team);
-  }catch(e){showToast('Asana: '+(e.message||'error'));}
+    if(!mine.length) showToast('Asana: connected but no tasks found');
+    else showToast('Asana: loaded '+mine.length+' tasks');
+  }catch(e){showToast('Asana: '+(e.message||'error — check token'));}
 }
 
 function mkAsanaTask(t,own){
